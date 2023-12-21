@@ -19,21 +19,23 @@
 #include <stdint.h>
 #include <stm32f4xx.h>
 #include <system_stm32f4xx.h>
+#include <stm32f4xx_ll_utils.h>
 
-#if !defined(__SOFT_FP__) && defined(__ARM_FP)
-  #warning "FPU is not initialized, but the project is compiling for an FPU. Please initialize the FPU before use."
-#endif
+static inline void HSI_oscilator()
+{
+    SET_BIT(RCC->AHB1ENR, RCC_AHB1ENR_GPIOCEN);
+    SET_BIT(GPIOC->MODER, GPIO_MODER_MODE9_1);
+    SET_BIT(GPIOC->OSPEEDR, GPIO_OSPEEDER_OSPEEDR9);
+
+    SET_BIT(RCC->CFGR, RCC_CFGR_MCO2PRE_0);
+    SET_BIT(RCC->CFGR, RCC_CFGR_SW_HSI);
+}
 
 int main(void)
 {
-  SystemCoreClockUpdate();
-  SET_BIT(RCC->AHB1ENR, RCC_AHB1ENR_GPIOCEN);
-  SET_BIT(GPIOC->MODER, GPIO_MODER_MODE9_1);
-  SET_BIT(GPIOC->OSPEEDR, GPIO_OSPEEDER_OSPEEDR9);
+    SystemCoreClockUpdate();
 
-  SET_BIT(RCC->CFGR, RCC_CFGR_MCO2PRE_0);
-  SET_BIT(RCC->CFGR, RCC_CFGR_SW_HSI);
-
+    HSI_oscilator();
     /* Loop forever */
-	for(;;);
+  	for(;;);
 }
