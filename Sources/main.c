@@ -28,6 +28,7 @@ static inline void HSI_oscilator()
     SET_BIT(GPIOC->OSPEEDR, GPIO_OSPEEDER_OSPEEDR9);
 
     SET_BIT(RCC->CFGR, RCC_CFGR_SW_HSI);
+
     CLEAR_BIT(RCC->CFGR, RCC_CFGR_MCO2_0 | RCC_CFGR_MCO2_1);
 }
 
@@ -38,7 +39,21 @@ static inline void HSE_oscilator()
     SET_BIT(GPIOC->OSPEEDR, GPIO_OSPEEDER_OSPEEDR9);
 
     SET_BIT(RCC->CFGR, RCC_CFGR_SW_HSI);
+
+    CLEAR_BIT(RCC->CFGR, RCC_CFGR_MCO2PRE_1);
     SET_BIT(RCC->CFGR, RCC_CFGR_MCO2PRE_0);
+}
+
+static inline void PLL_oscilator()
+{
+    SET_BIT(RCC->AHB1ENR, RCC_AHB1ENR_GPIOCEN);
+    SET_BIT(GPIOC->MODER, GPIO_MODER_MODE9_1);
+    SET_BIT(GPIOC->OSPEEDR, GPIO_OSPEEDER_OSPEEDR9);
+
+    SET_BIT(RCC->CFGR, RCC_CFGR_SW_HSI);
+
+    /* Need to conmfigure PLL here */
+    SET_BIT(RCC->CFGR, RCC_CFGR_MCO2PRE_1 | RCC_CFGR_MCO2PRE_0);
 }
 
 int main(void)
@@ -49,6 +64,8 @@ int main(void)
     HSI_oscilator();
     LL_mDelay(5000);
     HSE_oscilator();
+    LL_mDelay(5000);
+    PLL_oscilator();
     LL_mDelay(5000);
     /* Loop forever */
   	for(;;);
