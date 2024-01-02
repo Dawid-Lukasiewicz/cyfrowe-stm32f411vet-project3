@@ -44,16 +44,41 @@ static inline void HSE_oscilator()
     SET_BIT(RCC->CFGR, RCC_CFGR_MCO2PRE_0);
 }
 
-static inline void PLL_oscilator()
-{
+/* Check for the correct PLL configuration values */
+static inline void PLL_oscilator() {
     SET_BIT(RCC->AHB1ENR, RCC_AHB1ENR_GPIOCEN);
     SET_BIT(GPIOC->MODER, GPIO_MODER_MODE9_1);
     SET_BIT(GPIOC->OSPEEDR, GPIO_OSPEEDER_OSPEEDR9);
 
-    SET_BIT(RCC->CFGR, RCC_CFGR_SW_HSI);
+    // Enable HSE
+    SET_BIT(RCC->CR, RCC_CR_HSEON);
 
-    /* Need to conmfigure PLL here */
-    SET_BIT(RCC->CFGR, RCC_CFGR_MCO2PRE_1 | RCC_CFGR_MCO2PRE_0);
+    // Wait till HSE is ready
+    while(READ_BIT(RCC->CR, RCC_CR_HSERDY) == 0);
+
+    // Set the PLL source to HSE
+    SET_BIT(RCC->PLLCFGR, RCC_PLLCFGR_PLLSRC_HSE);
+
+    // Set the PLL multiplication and division factors
+    // Example: Set PLLN to 192, PLLM to 8 and PLLP to 2
+    MODIFY_REG(RCC->PLLCFGR, RCC_PLLCFGR_PLLN, 192 << RCC_PLLCFGR_PLLN_Pos);
+    MODIFY_REG(RCC->PLLCFGR, RCC_PLLCFGR_PLLM, 8 << RCC_PLLCFGR_PLLM_Pos);
+    MODIFY_REG(RCC->PLLCFGR, RCC_PLLCFGR_PLLP, 0 << RCC_PLLCFGR_PLLP_Pos); // PLLP = 2
+
+    // Enable the PLL
+    SET_BIT(RCC->CR, RCC_CR_PLLON);
+
+    // Wait till PLL is ready
+    while(READ_BIT(RCC->CR, RCC_CR_PLLRDY) == 0);
+
+    // Select the PLL as system clock source
+    MODIFY_REG(RCC->CFGR, RCC_CFGR_SW, RCC_CFGR_SW_PLL);
+
+    // Wait till PLL is used as system clock source
+    while(READ_BIT(RCC->CFGR, RCC_CFGR_SWS) != RCC_CFGR_SWS_PLL);
+
+    // Set the MCO2 clock source to PLL and prescaler
+    MODIFY_REG(RCC->CFGR, RCC_CFGR_MCO2, (RCC_CFGR_MCO2PRE_1 | RCC_CFGR_MCO2PRE_0));
 }
 
 int main(void)
