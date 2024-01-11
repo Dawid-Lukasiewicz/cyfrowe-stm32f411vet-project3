@@ -28,7 +28,7 @@ static inline void HSI_oscilator()
     SET_BIT(GPIOC->OSPEEDR, GPIO_OSPEEDER_OSPEEDR9);
 
     SET_BIT(RCC->CFGR, RCC_CFGR_MCO2PRE_0);
-    // SET_BIT(RCC->CFGR, RCC_CFGR_SW_HSI);
+    SET_BIT(RCC->CFGR, RCC_CFGR_SW_HSI);
     CLEAR_BIT(RCC->CFGR, RCC_CFGR_MCO2_0 | RCC_CFGR_MCO2_1);
 }
 
@@ -56,6 +56,8 @@ static inline void PLL_oscilator() {
     SET_BIT(GPIOC->MODER, GPIO_MODER_MODE9_1);
     SET_BIT(GPIOC->OSPEEDR, GPIO_OSPEEDER_OSPEEDR9);
 
+    // Always set HSI a System Clock Source
+    SET_BIT(RCC->CFGR, RCC_CFGR_SW_HSI);
     // Enable HSE
     SET_BIT(RCC->CR, RCC_CR_HSEON);
 
@@ -66,10 +68,11 @@ static inline void PLL_oscilator() {
     SET_BIT(RCC->PLLCFGR, RCC_PLLCFGR_PLLSRC_HSE);
 
     // Set the PLL multiplication and division factors
-    // Example: Set PLLN to 192, PLLM to 8 and PLLP to 4
-    MODIFY_REG(RCC->PLLCFGR, RCC_PLLCFGR_PLLN, 64 << RCC_PLLCFGR_PLLN_Pos);
-    MODIFY_REG(RCC->PLLCFGR, RCC_PLLCFGR_PLLM, 8 << RCC_PLLCFGR_PLLM_Pos);
-    MODIFY_REG(RCC->PLLCFGR, RCC_PLLCFGR_PLLP, 2 << RCC_PLLCFGR_PLLP_Pos); // PLLP = 2
+    // Example: Set PLLN to 192, PLLM to 8 and PLLP to 8
+    // f_PLL = CLK_Source * PLLN / (PLLM * PLLP)
+    MODIFY_REG(RCC->PLLCFGR, RCC_PLLCFGR_PLLN, 192 << RCC_PLLCFGR_PLLN_Pos); // PPLN = 198
+    MODIFY_REG(RCC->PLLCFGR, RCC_PLLCFGR_PLLM, 8 << RCC_PLLCFGR_PLLM_Pos); // PLLM = 8
+    MODIFY_REG(RCC->PLLCFGR, RCC_PLLCFGR_PLLP, 3 << RCC_PLLCFGR_PLLP_Pos); // PLLP = 8
 
     // Enable the PLL
     SET_BIT(RCC->CR, RCC_CR_PLLON);
@@ -77,31 +80,25 @@ static inline void PLL_oscilator() {
     // Wait till PLL is ready
     while(READ_BIT(RCC->CR, RCC_CR_PLLRDY) == 0);
 
-    // Select the PLL as system clock source
-    MODIFY_REG(RCC->CFGR, RCC_CFGR_SW, RCC_CFGR_SW_PLL);
-
-    // Wait till PLL is used as system clock source
-    while(READ_BIT(RCC->CFGR, RCC_CFGR_SWS) != RCC_CFGR_SWS_PLL);
-
     // Set the MCO2 clock source to PLL and prescaler
-    MODIFY_REG(RCC->CFGR, RCC_CFGR_MCO2, (RCC_CFGR_MCO2PRE_1 | RCC_CFGR_MCO2PRE_0));
+    SET_BIT(RCC->CFGR, RCC_CFGR_MCO2_0 | RCC_CFGR_MCO2_1);
+    CLEAR_BIT(RCC->CFGR, RCC_CFGR_MCO2PRE_0 | RCC_CFGR_MCO2PRE_1 | RCC_CFGR_MCO2PRE_2);
 }
 
 int main(void)
 {
-    PLL_oscilator();
     SystemCoreClockUpdate();
     LL_Init1msTick(SystemCoreClock);
 
 
-    // LL_mDelay(5000);
-    // LL_mDelay(5000);
     /* Loop forever */
   	for(;;)
     {
-        // HSI_oscilator();
-        // LL_mDelay(15000);
-        // HSE_oscilator();
-        // LL_mDelay(15000);
+        HSI_oscilator();
+        LL_mDelay(10000);
+        HSE_oscilator();
+        LL_mDelay(10000);
+        PLL_oscilator();
+        LL_mDelay(10000);
     }
 }
