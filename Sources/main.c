@@ -20,6 +20,39 @@
 #include <stm32f4xx.h>
 #include <system_stm32f4xx.h>
 #include <stm32f4xx_ll_utils.h>
+#include <stm32f4xx_ll_usart.h>
+#include <stm32f4xx_ll_gpio.h>
+#include <stm32f4xx_ll_bus.h>
+
+static void inline ll_init_usart2()
+{
+	LL_GPIO_InitTypeDef u2_tx, u2_rx;
+	LL_USART_InitTypeDef usart2;
+
+	/* Init PA2 as Tx & PA3 as Rx for USART2*/
+	LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_GPIOA);
+	LL_GPIO_StructInit(&u2_tx);
+	u2_tx.Pin 		= LL_GPIO_PIN_2;
+	u2_tx.Mode 		= LL_GPIO_MODE_ALTERNATE;
+	u2_tx.Alternate = LL_GPIO_AF_7;
+	LL_GPIO_Init(GPIOA, &u2_tx);
+
+	LL_GPIO_StructInit(&u2_rx);
+	u2_rx.Pin 		= LL_GPIO_PIN_3;
+	u2_rx.Mode 		= LL_GPIO_MODE_ALTERNATE;
+	u2_rx.Alternate = LL_GPIO_AF_7;
+	LL_GPIO_Init(GPIOA, &u2_rx);
+
+	/* Init USART2*/
+	LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_USART2);
+	LL_USART_StructInit(&usart2);
+	LL_USART_Init(USART2, &usart2);
+	LL_USART_Enable(USART2);
+
+	/* Set priority */
+	NVIC_EnableIRQ(USART2_IRQn);
+	LL_USART_EnableIT_RXNE(USART2);
+}
 
 static inline void HSI_oscilator()
 {
@@ -89,7 +122,7 @@ int main(void)
 {
     SystemCoreClockUpdate();
     LL_Init1msTick(SystemCoreClock);
-
+    ll_init_usart2();
 
     /* Loop forever */
   	for(;;)
