@@ -17,12 +17,62 @@
  */
 
 #include <stdint.h>
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+
 #include <stm32f4xx.h>
 #include <system_stm32f4xx.h>
 #include <stm32f4xx_ll_utils.h>
 #include <stm32f4xx_ll_usart.h>
 #include <stm32f4xx_ll_gpio.h>
 #include <stm32f4xx_ll_bus.h>
+
+#define MESS_BUFFOR	    2
+
+volatile uint8_t    flag_config = 0;
+volatile int        mess_idx = 0;
+volatile char 		mess_receive[MESS_BUFFOR];
+const char			mess_template[16] = "Oscilator set:\0";
+
+
+static void inline send_mess_N(char *mess, int n)
+{
+	int i = 0;
+	while(n > 0)
+	{
+		if(LL_USART_IsActiveFlag_TXE(USART2))
+		{
+			USART2->DR = mess[i];
+			i++;
+			n--;
+		}
+	}
+}
+
+void USART2_IRQHandler()
+{
+	char byte_receive;
+	if(LL_USART_IsActiveFlag_RXNE(USART2))
+	{
+		byte_receive = USART2->DR;
+		mess_receive[mess_idx] = byte_receive;
+		mess_idx++;
+	}
+	if(byte_receive == '\n' || byte_receive == '\r' || mess_idx >= MESS_BUFFOR)
+	{
+		int bytes;
+		char mess_transmit[32];
+
+		flag_config = atoi((char*)mess_receive);
+
+		bytes = sprintf(mess_transmit, "%s %s%c", mess_template, mess_receive, '\n');
+
+		memset((char*)mess_receive,0,sizeof(mess_receive));
+		mess_idx = 0;
+		send_mess_N(mess_transmit, bytes);
+	}
+}
 
 static void inline ll_init_usart2()
 {
@@ -123,15 +173,34 @@ int main(void)
     SystemCoreClockUpdate();
     LL_Init1msTick(SystemCoreClock);
     ll_init_usart2();
+    send_mess_N("INIT SYSTEM\r\n", 13);
 
     /* Loop forever */
   	for(;;)
     {
-        HSI_oscilator();
-        LL_mDelay(10000);
-        HSE_oscilator();
-        LL_mDelay(10000);
-        PLL_oscilator();
-        LL_mDelay(10000);
+        switch (flag_config)
+        {
+        case 0:
+            break;
+        case 1:
+            HSI_oscilator();
+            send_mess_N("HSI\r\n", 5);
+            flag_config = 0;
+            break;
+        case 2:
+            HSE_oscilator();
+            send_mess_N("HSE\r\n", 5);
+            flag_config = 0;
+            break;
+        case 3:
+            PLL_oscilator();
+            send_mess_N("PLL\r\n", 5);
+            flag_config = 0;
+            break;
+        default:
+            send_mess_N("BAD CONFIG\r\n", 12);
+            flag_config = 0;
+            break;
+        }
     }
 }
